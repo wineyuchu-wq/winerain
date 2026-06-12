@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>片名生成器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0d0c0b;
+    --bg2: #141311;
+    --bg3: #1c1a18;
+    --bg4: #242220;
+    --amber: #c8913a;
+    --amber-light: #e8b870;
+    --amber-dim: #7a5520;
+    --text: #e8e2d8;
+    --text-muted: #8a8070;
+    --text-dim: #5a5248;
+    --line: rgba(200,145,58,0.18);
+    --line-dim: rgba(200,145,58,0.08);
+    --serif: 'Noto Serif SC', serif;
+    --playfair: 'Playfair Display', serif;
+  }
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--serif);
+    min-height: 100vh;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+  .screen { display: none; min-height: 100vh; }
+  .screen.active { display: flex; flex-direction: column; }
+
+  /* LANDING */
+  #screen-landing {
+    align-items: center; justify-content: center;
+    text-align: center; padding: 60px 24px; position: relative; overflow: hidden;
+  }
+  #screen-landing::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse 60% 40% at 50% 60%, rgba(200,145,58,0.05) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .landing-filmstrip { display: none; }
+  .filmstrip-hole { width: 10px; height: 14px; border: 1px solid var(--amber); border-radius: 2px; }
+  .landing-title { font-size: clamp(42px, 8vw, 72px); font-weight: 300; letter-spacing: 0.12em; color: var(--text); line-height: 1.2; margin-bottom: 12px; }
+  .landing-title span { color: var(--amber); }
+  .landing-sub { font-size: 13px; letter-spacing: 0.3em; color: var(--text-muted); margin-bottom: 8px; font-weight: 300; }
+  .landing-desc { font-size: 15px; color: var(--text-muted); max-width: 420px; margin: 0 auto 48px; font-weight: 300; line-height: 1.9; }
+  .btn-primary { background: transparent; border: 1px solid var(--amber); color: var(--amber-light); font-family: var(--serif); font-size: 14px; letter-spacing: 0.25em; padding: 14px 48px; cursor: pointer; transition: all 0.3s; font-weight: 400; }
+  .btn-primary:hover { background: rgba(200,145,58,0.1); border-color: var(--amber-light); }
+  .btn-ghost { background: transparent; border: 1px solid var(--line); color: var(--text-muted); font-family: var(--serif); font-size: 13px; letter-spacing: 0.15em; padding: 10px 28px; cursor: pointer; transition: all 0.2s; }
+  .btn-ghost:hover { border-color: var(--amber-dim); color: var(--text); }
+
+  /* FORM */
+  #screen-form { padding: 0; justify-content: flex-start; }
+  .form-header { padding: 28px 40px; border-bottom: 1px solid var(--line-dim); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .form-header-title { font-size: 13px; letter-spacing: 0.3em; color: var(--text-muted); font-weight: 300; }
+  .step-dots { display: flex; gap: 8px; align-items: center; }
+  .step-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--bg4); border: 1px solid var(--text-dim); transition: all 0.3s; }
+  .step-dot.active { background: var(--amber); border-color: var(--amber); }
+  .step-dot.done { background: var(--amber-dim); border-color: var(--amber-dim); }
+  .form-body { flex: 1; display: flex; align-items: flex-start; justify-content: center; padding: 60px 24px; }
+  .form-step { display: none; width: 100%; max-width: 560px; animation: fadeUp 0.4s ease; }
+  .form-step.active { display: block; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  .step-num { font-size: 11px; letter-spacing: 0.4em; color: var(--amber); margin-bottom: 10px; font-weight: 400; }
+  .step-title { font-size: clamp(22px, 4vw, 32px); font-weight: 300; color: var(--text); margin-bottom: 6px; letter-spacing: 0.05em; }
+  .step-hint { font-size: 13px; color: var(--text-muted); margin-bottom: 36px; font-weight: 300; }
+  .field-label { font-size: 12px; letter-spacing: 0.2em; color: var(--text-muted); margin-bottom: 10px; display: block; font-weight: 400; }
+  .field-group { margin-bottom: 28px; }
+  select, textarea, input[type="text"] { width: 100%; background: var(--bg2); border: 1px solid var(--line); color: var(--text); font-family: var(--serif); font-size: 15px; padding: 14px 18px; outline: none; transition: border-color 0.2s; -webkit-appearance: none; appearance: none; font-weight: 300; }
+  select:focus, textarea:focus, input[type="text"]:focus { border-color: var(--amber-dim); }
+  select { cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a5520' stroke-width='1.5' fill='none'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 18px center; padding-right: 44px; }
+  select option { background: var(--bg2); }
+  textarea { resize: vertical; min-height: 120px; line-height: 1.7; }
+  .char-count { font-size: 11px; color: var(--text-dim); text-align: right; margin-top: 6px; }
+  .tag-group { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 6px; }
+  .tag-option { border: 1px solid var(--line); color: var(--text-muted); font-family: var(--serif); font-size: 13px; padding: 8px 18px; cursor: pointer; transition: all 0.2s; font-weight: 300; letter-spacing: 0.05em; user-select: none; }
+  .tag-option:hover { border-color: var(--amber-dim); color: var(--text); }
+  .tag-option.selected { border-color: var(--amber); color: var(--amber-light); background: rgba(200,145,58,0.08); }
+  .form-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 40px; padding-top: 28px; border-top: 1px solid var(--line-dim); }
+
+  /* LOADING */
+  #screen-loading { align-items: center; justify-content: center; text-align: center; padding: 40px 24px; }
+  .reel { width: 80px; height: 80px; border: 2px solid var(--amber-dim); border-radius: 50%; position: relative; animation: spin 2s linear infinite; margin: 0 auto 28px; }
+  .reel::before { content: ''; position: absolute; inset: 8px; border: 1px solid var(--line); border-radius: 50%; }
+  .reel-spoke { position: absolute; top: 50%; left: 50%; width: 28px; height: 1px; background: var(--amber-dim); transform-origin: left center; }
+  .reel-hub { position: absolute; top: 50%; left: 50%; width: 12px; height: 12px; background: var(--amber); border-radius: 50%; transform: translate(-50%, -50%); }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .film-strip-anim { display: flex; align-items: center; margin: 28px auto; overflow: hidden; width: 240px; }
+  .film-frame { width: 30px; height: 20px; border: 1px solid var(--amber-dim); flex-shrink: 0; opacity: 0.4; animation: flicker 0.8s ease-in-out infinite; }
+  .film-frame:nth-child(2) { animation-delay: 0.1s; }
+  .film-frame:nth-child(3) { animation-delay: 0.2s; }
+  .film-frame:nth-child(4) { animation-delay: 0.3s; }
+  .film-frame:nth-child(5) { animation-delay: 0.4s; }
+  .film-frame:nth-child(6) { animation-delay: 0.5s; }
+  .film-frame:nth-child(7) { animation-delay: 0.6s; }
+  .film-frame:nth-child(8) { animation-delay: 0.7s; }
+  @keyframes flicker { 0%, 100% { opacity: 0.15; } 50% { opacity: 0.55; } }
+  .loading-text { font-size: 13px; letter-spacing: 0.25em; color: var(--text-muted); font-weight: 300; }
+  .loading-dots::after { content: ''; animation: dots 1.5s steps(4, end) infinite; }
+  @keyframes dots { 0% { content: ''; } 25% { content: '·'; } 50% { content: '··'; } 75% { content: '···'; } 100% { content: ''; } }
+
+  /* RESULTS */
+  #screen-results { padding: 0; justify-content: flex-start; min-height: 100vh; }
+  .results-header { padding: 24px 40px; border-bottom: 1px solid var(--line-dim); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  .results-title { font-size: 12px; letter-spacing: 0.3em; color: var(--text-muted); font-weight: 300; }
+  .results-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .btn-sm { background: transparent; border: 1px solid var(--line); color: var(--text-muted); font-family: var(--serif); font-size: 12px; letter-spacing: 0.15em; padding: 8px 20px; cursor: pointer; transition: all 0.2s; font-weight: 300; }
+  .btn-sm:hover { border-color: var(--amber-dim); color: var(--text); }
+  .btn-sm.amber { border-color: var(--amber-dim); color: var(--amber); }
+  .btn-sm.amber:hover { border-color: var(--amber); background: rgba(200,145,58,0.08); }
+  .results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1px; background: var(--line-dim); flex: 1; }
+  .title-card { background: var(--bg); padding: 36px 32px; position: relative; transition: background 0.2s; display: flex; flex-direction: column; }
+  .title-card:hover { background: var(--bg2); }
+  .card-style-tag { font-size: 10px; letter-spacing: 0.3em; color: var(--amber-dim); margin-bottom: 16px; font-weight: 400; }
+  .card-title-zh { font-size: clamp(28px, 5vw, 42px); font-weight: 300; color: var(--text); letter-spacing: 0.1em; line-height: 1.3; margin-bottom: 10px; }
+  .card-title-en { font-family: var(--playfair); font-size: 14px; color: var(--text-dim); font-style: italic; margin-bottom: 20px; letter-spacing: 0.05em; }
+  .card-divider { height: 1px; background: var(--line-dim); margin-bottom: 16px; }
+  .card-rationale { font-size: 13px; color: var(--text-muted); line-height: 1.8; font-weight: 300; flex: 1; }
+  .card-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .card-btn { background: transparent; border: 1px solid var(--line-dim); color: var(--text-dim); font-family: var(--serif); font-size: 11px; letter-spacing: 0.15em; padding: 6px 14px; cursor: pointer; transition: all 0.2s; font-weight: 300; }
+  .card-btn:hover { border-color: var(--amber-dim); color: var(--text-muted); }
+  .card-btn.favorited { border-color: var(--amber); color: var(--amber); background: rgba(200,145,58,0.06); }
+
+  /* FAVORITES */
+  #screen-favorites { padding: 0; justify-content: flex-start; }
+  .fav-header { padding: 28px 40px; border-bottom: 1px solid var(--line-dim); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  .fav-list { padding: 40px; max-width: 800px; margin: 0 auto; width: 100%; }
+  .fav-item { border-bottom: 1px solid var(--line-dim); padding: 28px 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+  .fav-item-main { flex: 1; }
+  .fav-item-zh { font-size: 28px; font-weight: 300; color: var(--text); letter-spacing: 0.1em; margin-bottom: 4px; }
+  .fav-item-en { font-family: var(--playfair); font-size: 13px; color: var(--text-dim); font-style: italic; margin-bottom: 10px; }
+  .fav-item-rationale { font-size: 13px; color: var(--text-muted); font-weight: 300; line-height: 1.8; }
+  .fav-item-remove { background: transparent; border: none; color: var(--text-dim); cursor: pointer; font-size: 20px; line-height: 1; padding: 4px; transition: color 0.2s; font-family: var(--serif); flex-shrink: 0; margin-top: 4px; }
+  .fav-item-remove:hover { color: #c07070; }
+  .fav-empty { text-align: center; padding: 80px 24px; color: var(--text-dim); font-size: 15px; font-weight: 300; }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 28px; right: 28px; background: var(--bg3); border: 1px solid var(--amber-dim); color: var(--amber-light); font-family: var(--serif); font-size: 13px; padding: 10px 20px; z-index: 200; opacity: 0; transform: translateY(8px); transition: all 0.3s; pointer-events: none; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  @media (max-width: 600px) {
+    .form-header, .results-header, .fav-header { padding: 20px; }
+    .results-grid { grid-template-columns: 1fr; }
+    .title-card { padding: 28px 20px; }
+    .fav-list { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LANDING -->
+<div id="screen-landing" class="screen active">
+  <div class="landing-filmstrip">
+    <div class="filmstrip-hole"></div><div class="filmstrip-hole"></div><div class="filmstrip-hole"></div>
+    <div class="filmstrip-hole"></div><div class="filmstrip-hole"></div><div class="filmstrip-hole"></div>
+    <div class="filmstrip-hole"></div><div class="filmstrip-hole"></div><div class="filmstrip-hole"></div>
+  </div>
+  <div class="landing-sub">TITLE GENERATOR</div>
+  <h1 class="landing-title">片名<span>·</span>生成</h1>
+  <p class="landing-desc">如果你也是起名困难户，那也没关系啦，我也是。</p>
+  <button class="btn-primary" onclick="goTo('form')">开始命名</button>
+  <br><br>
+  <button class="btn-ghost" onclick="goTo('favorites')" style="margin-top:8px">我的收藏</button>
+</div>
+
+<!-- FORM -->
+<div id="screen-form" class="screen">
+  <div class="form-header">
+    <span class="form-header-title">片名生成器</span>
+    <div class="step-dots">
+      <div class="step-dot active" id="dot-1"></div>
+      <div class="step-dot" id="dot-2"></div>
+      <div class="step-dot" id="dot-3"></div>
+      <div class="step-dot" id="dot-4"></div>
+    </div>
+  </div>
+  <div class="form-body">
+    <div class="form-step active" id="step-1">
+      <div class="step-num">01 / 04</div>
+      <h2 class="step-title">作品类型与梗概</h2>
+      <p class="step-hint">告诉我你在做什么</p>
+      <div class="field-group">
+        <label class="field-label">作品类型</label>
+        <select id="f-type">
+          <option value="">请选择</option>
+          <option value="纪录片">纪录片</option>
+          <option value="剧情短片">剧情短片</option>
+          <option value="长片剧本">长片剧本</option>
+          <option value="小说">小说</option>
+          <option value="散文集">散文集</option>
+          <option value="实验影像">实验影像</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label class="field-label">一句话梗概 <span style="color:var(--amber-dim)">*</span></label>
+        <textarea id="f-synopsis" placeholder="用一句话描述你的作品核心：讲了什么人、什么事、什么处境……" maxlength="200" oninput="updateChar('f-synopsis','synopsis-count',200)"></textarea>
+        <div class="char-count"><span id="synopsis-count">0</span> / 200</div>
+      </div>
+      <div class="form-nav">
+        <button class="btn-ghost" onclick="goTo('landing')">← 返回</button>
+        <button class="btn-primary" onclick="nextStep(1)">下一步 →</button>
+      </div>
+    </div>
+
+    <div class="form-step" id="step-2">
+      <div class="step-num">02 / 04</div>
+      <h2 class="step-title">核心主题</h2>
+      <p class="step-hint">可选 — 留空则由生成器自由发挥</p>
+      <div class="field-group">
+        <label class="field-label">关键词或意象</label>
+        <input type="text" id="f-keywords" placeholder="例：记忆、胶片、父女、消逝 / 城市、孤独、凌晨三点" maxlength="100">
+      </div>
+      <div class="form-nav">
+        <button class="btn-ghost" onclick="prevStep(2)">← 上一步</button>
+        <button class="btn-primary" onclick="nextStep(2)">下一步 →</button>
+      </div>
+    </div>
+
+    <div class="form-step" id="step-3">
+      <div class="step-num">03 / 04</div>
+      <h2 class="step-title">情感基调</h2>
+      <p class="step-hint">选择一种最接近你作品气质的基调</p>
+      <div class="field-group">
+        <div class="tag-group" id="tone-group">
+          <div class="tag-option" onclick="selectSingle('tone-group',this)" data-val="克制冷静">克制冷静</div>
+          <div class="tag-option" onclick="selectSingle('tone-group',this)" data-val="温暖治愈">温暖治愈</div>
+          <div class="tag-option" onclick="selectSingle('tone-group',this)" data-val="锋利批判">锋利批判</div>
+          <div class="tag-option" onclick="selectSingle('tone-group',this)" data-val="诗意忧郁">诗意忧郁</div>
+          <div class="tag-option" onclick="selectSingle('tone-group',this)" data-val="荒诞幽默">荒诞幽默</div>
+        </div>
+      </div>
+      <div class="form-nav">
+        <button class="btn-ghost" onclick="prevStep(3)">← 上一步</button>
+        <button class="btn-primary" onclick="nextStep(3)">下一步 →</button>
+      </div>
+    </div>
+
+    <div class="form-step" id="step-4">
+      <div class="step-num">04 / 04</div>
+      <h2 class="step-title">命名偏好</h2>
+      <p class="step-hint">可多选 — 不选则全风格混合生成</p>
+      <div class="field-group">
+        <div class="tag-group" id="pref-group">
+          <div class="tag-option" onclick="toggleTag(this)" data-val="极简">单字·双字极简</div>
+          <div class="tag-option" onclick="toggleTag(this)" data-val="意象">意象隐喻</div>
+          <div class="tag-option" onclick="toggleTag(this)" data-val="引用">引用化用</div>
+          <div class="tag-option" onclick="toggleTag(this)" data-val="双语">中英双语</div>
+          <div class="tag-option" onclick="toggleTag(this)" data-val="口语">口语直白</div>
+        </div>
+      </div>
+      <div class="form-nav">
+        <button class="btn-ghost" onclick="prevStep(4)">← 上一步</button>
+        <button class="btn-primary" onclick="generate()">生成片名 →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div id="screen-loading" class="screen">
+  <div class="reel">
+    <div class="reel-spoke" style="transform:translateY(-50%) rotate(0deg)"></div>
+    <div class="reel-spoke" style="transform:translateY(-50%) rotate(60deg)"></div>
+    <div class="reel-spoke" style="transform:translateY(-50%) rotate(120deg)"></div>
+    <div class="reel-spoke" style="transform:translateY(-50%) rotate(180deg)"></div>
+    <div class="reel-spoke" style="transform:translateY(-50%) rotate(240deg)"></div>
+    <div class="reel-spoke" style="transform:translateY(-50%) rotate(300deg)"></div>
+    <div class="reel-hub"></div>
+  </div>
+  <div class="film-strip-anim">
+    <div class="film-frame"></div><div class="film-frame"></div><div class="film-frame"></div>
+    <div class="film-frame"></div><div class="film-frame"></div><div class="film-frame"></div>
+    <div class="film-frame"></div><div class="film-frame"></div>
+  </div>
+  <p class="loading-text loading-dots">正在为你构思片名</p>
+</div>
+
+<!-- RESULTS -->
+<div id="screen-results" class="screen">
+  <div class="results-header">
+    <span class="results-title">为你生成了 8 个片名</span>
+    <div class="results-actions">
+      <button class="btn-sm" onclick="goTo('favorites')">我的收藏</button>
+      <button class="btn-sm" onclick="goTo('form')">重新填写</button>
+      <button class="btn-sm amber" onclick="regenerateAll()">换一批 ↻</button>
+    </div>
+  </div>
+  <div id="results-grid" class="results-grid"></div>
+</div>
+
+<!-- FAVORITES -->
+<div id="screen-favorites" class="screen">
+  <div class="fav-header">
+    <span class="results-title">我的收藏</span>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <button class="btn-sm" onclick="copyAllFavs()">全部复制</button>
+      <button class="btn-sm" onclick="goBack()">← 返回</button>
+    </div>
+  </div>
+  <div id="fav-list" class="fav-list"></div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+let currentScreen = 'landing';
+let currentResults = [];
+let formData = {};
+let favorites = JSON.parse(localStorage.getItem('titlegen-favs') || '[]');
+let usedTitles = new Set();
+
+// ─── Navigation ──────────────────────────────────────────────────────────────
+function goTo(s) {
+  document.getElementById('screen-' + currentScreen).classList.remove('active');
+  currentScreen = s;
+  document.getElementById('screen-' + s).classList.add('active');
+  if (s === 'favorites') renderFavorites();
+  window.scrollTo(0, 0);
+}
+function goBack() {
+  goTo(currentResults.length > 0 ? 'results' : 'landing');
+}
+function updateDots(step) {
+  for (let i = 1; i <= 4; i++) {
+    const d = document.getElementById('dot-' + i);
+    d.className = 'step-dot' + (i < step ? ' done' : i === step ? ' active' : '');
+  }
+}
+function showStep(n) {
+  document.querySelectorAll('.form-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('step-' + n).classList.add('active');
+  updateDots(n);
+}
+function nextStep(cur) {
+  if (cur === 1) {
+    const synopsis = document.getElementById('f-synopsis').value.trim();
+    if (!synopsis) { showToast('请填写作品梗概'); return; }
+    formData.type = document.getElementById('f-type').value;
+    formData.synopsis = synopsis;
+  }
+  if (cur === 2) formData.keywords = document.getElementById('f-keywords').value.trim();
+  if (cur === 3) {
+    const sel = document.querySelector('#tone-group .tag-option.selected');
+    formData.tone = sel ? sel.dataset.val : '';
+  }
+  showStep(cur + 1);
+}
+function prevStep(cur) { showStep(cur - 1); }
+function selectSingle(gid, el) {
+  document.querySelectorAll('#' + gid + ' .tag-option').forEach(t => t.classList.remove('selected'));
+  el.classList.add('selected');
+}
+function toggleTag(el) { el.classList.toggle('selected'); }
+function updateChar(id, cid, max) {
+  document.getElementById(cid).textContent = document.getElementById(id).value.length;
+}
+
+// ─── Title Generation Engine ──────────────────────────────────────────────────
+
+// Rich word banks keyed by theme / tone
+const BANKS = {
+  light: ['光','光线','余光','微光','晨光','逆光','斜光','光斑','暖光','光晕'],
+  time:  ['时间','岁月','年份','日历','时刻','瞬间','往昔','当下','明日','记忆','此刻','过去'],
+  space: ['房间','走廊','窗口','边界','远方','归处','原地','他乡','故土','门口','街道','城市'],
+  body:  ['手','眼','背影','面孔','呼吸','心跳','皮肤','声音','步伐','目光','嘴唇','耳朵'],
+  nature:['河流','山','云','雨','雪','风','海','树','草','石','尘','浪','月','星'],
+  film:  ['胶片','快门','底片','曝光','显影','定格','镜头','黑白','画面','影像','帧','焦距'],
+  abstract:['空白','缺席','在场','沉默','距离','重量','温度','密度','边缘','核心'],
+  action:['等待','寻找','离开','返回','停留','遗忘','记起','凝视','触碰','呼唤','沉默','相遇'],
+};
+
+const TONEMOD = {
+  '克制冷静': { adj:['灰白','静止','冷','无声','悬置','空'],    prefix:['无','非','不','半'] },
+  '温暖治愈': { adj:['柔软','温热','金色','安静','轻盈','明亮'], prefix:['有','再','又','还'] },
+  '锋利批判': { adj:['锈','刃','断裂','灼','尖锐','硬'],         prefix:['反','破','撕','碎'] },
+  '诗意忧郁': { adj:['潮湿','灰','模糊','褪','旧','薄暮'],        prefix:['似','如','若','仿佛'] },
+  '荒诞幽默': { adj:['多余','错位','奇怪','意外','可疑','乐观'],  prefix:['关于','论','致','再论'] },
+};
+
+const STYLE_TEMPLATES = [
+  { style:'极简', label:'单字极简', fn: genMinimal },
+  { style:'极简', label:'双字极简', fn: genTwoChar },
+  { style:'意象', label:'意象隐喻', fn: genImagery },
+  { style:'意象', label:'意象组合', fn: genImageryCombo },
+  { style:'引用', label:'引用化用', fn: genQuote },
+  { style:'双语', label:'中英双语', fn: genBilingual },
+  { style:'口语', label:'口语直白', fn: genColloquial },
+  { style:'结构', label:'对仗结构', fn: genParallel },
+  { style:'极简', label:'三字片名', fn: genThreeChar },
+  { style:'意象', label:'时空意象', fn: genSpaceTime },
+  { style:'引用', label:'典故化用', fn: genAllusion },
+  { style:'口语', label:'疑问句式', fn: genQuestion },
+];
+
+// Keyword extraction from synopsis + user keywords
+function extractKeywords(fd) {
+  const raw = (fd.synopsis + ' ' + (fd.keywords || '')).replace(/[，,、。！？\s]/g, ' ');
+  const words = raw.split(' ').filter(w => w.length >= 2);
+  // pick meaningful nouns/verbs (2-4 chars)
+  return words.filter(w => w.length <= 4);
+}
+
+function pickFrom(arr, n = 1) {
+  const shuffled = [...arr].sort(() => Math.random() - 0.5);
+  return n === 1 ? shuffled[0] : shuffled.slice(0, n);
+}
+
+function bankWord(keys) {
+  const pool = keys.flatMap(k => BANKS[k] || []);
+  return pool.length ? pickFrom(pool) : pickFrom(BANKS.light);
+}
+
+function toneAdj(tone) {
+  const mod = TONEMOD[tone] || TONEMOD['诗意忧郁'];
+  return pickFrom(mod.adj);
+}
+
+function tonePrefix(tone) {
+  const mod = TONEMOD[tone] || TONEMOD['诗意忧郁'];
+  return pickFrom(mod.prefix);
+}
+
+// ── Individual generators ─────────────────────────────────────────────────────
+
+function genMinimal(fd, kws) {
+  const opts = [
+    ...BANKS.light, ...BANKS.time, ...BANKS.space, ...BANKS.nature,
+    ...kws.filter(w => w.length === 1),
+    toneAdj(fd.tone),
+  ].filter(w => w && w.length === 1);
+  const title = opts.length ? pickFrom(opts) : pickFrom(BANKS.light.filter(w => w.length === 1));
+  const en = ({ '光':'Light','时':'Time','海':'The Sea','雪':'Snow','风':'Wind','雨':'Rain','云':'Cloud','月':'Moon','尘':'Dust','影':'Shadow' })[title] || 'Fragment';
+  return { title, rationale:`以单字「${title}」浓缩全片气息，留白大于言说`, english: en, style:'单字极简' };
+}
+
+function genTwoChar(fd, kws) {
+  const pairs = [
+    ['归处','归宿','留白','余温','残影','遗忘','凝视','此刻','他乡','回声',
+     '低语','缺席','在场','边界','重量','沉默','消失','漂移','碎片','余光'],
+  ].flat();
+  const kwPairs = kws.filter(w => w.length === 2);
+  const pool = [...pairs, ...kwPairs];
+  const title = pickFrom(pool);
+  return { title, rationale:`双字片名「${title}」点到即止，以最少的字承载最大的张力`, english: bilingualEn(title), style:'双字极简' };
+}
+
+function genThreeChar(fd, kws) {
+  const tone = fd.tone;
+  const templates = [
+    () => bankWord(['nature']) + bankWord(['action']),
+    () => toneAdj(tone) + bankWord(['space']),
+    () => bankWord(['body']) + '的' + bankWord(['nature']),
+    () => '无' + bankWord(['abstract']),
+    () => bankWord(['time']) + '里',
+    () => kws[0] ? kws[0] + '记' : bankWord(['film']) + '记',
+  ];
+  const title = pickFrom(templates)();
+  return { title, rationale:`三字结构精炼，「${title}」在节奏上有古典诗歌的余韵`, english: bilingualEn(title), style:'三字片名' };
+}
+
+function genImagery(fd, kws) {
+  const imgA = bankWord(['nature','film','light']);
+  const imgB = bankWord(['time','abstract','action']);
+  const connectors = ['之','与','和','的','或'];
+  const conn = pickFrom(connectors);
+  const title = imgA + conn + imgB;
+  return { title, rationale:`以「${imgA}」与「${imgB}」并置，构成视觉上的张力与隐喻空间`, english: bilingualEn(title), style:'意象隐喻' };
+}
+
+function genImageryCombo(fd, kws) {
+  const adj = toneAdj(fd.tone);
+  const noun = bankWord(['space','nature','body']);
+  const title = adj + noun;
+  return { title, rationale:`以「${adj}」修饰「${noun}」，在形容词与名词的碰撞间生成意义`, english: bilingualEn(title), style:'意象组合' };
+}
+
+function genSpaceTime(fd, kws) {
+  const time = pickFrom(['凌晨','黄昏','正午','午夜','清晨','傍晚','深夜','暮色']);
+  const space = bankWord(['space']);
+  const templates = [
+    time + '的' + space,
+    space + '，' + time,
+    kws[0] ? kws[0] + '与' + time : time + bankWord(['action']),
+  ];
+  const title = pickFrom(templates);
+  return { title, rationale:`以时间「${time}」锚定情感坐标，召唤特定的感知状态`, english: bilingualEn(title), style:'时空意象' };
+}
+
+function genQuote(fd, kws) {
+  const quotes = [
+    { t:'此身已惯千山远', e:'A Thousand Mountains Already Distant' },
+    { t:'我不在处即是故乡', e:'Wherever I Am Not Is Home' },
+    { t:'人间失格', e:'No Longer Human' },
+    { t:'在世界的边缘', e:'At the Edge of the World' },
+    { t:'往事并不如烟', e:'The Past Is Not Smoke' },
+    { t:'今夕何夕', e:'What Night Is This' },
+    { t:'何以为家', e:'Where Is Home' },
+    { t:'如果云知道', e:'If the Clouds Knew' },
+    { t:'曾经沧海', e:'Once Upon the Deep Sea' },
+    { t:'此去经年', e:'Years from Now' },
+    { t:'无处安放', e:'Nowhere to Rest' },
+    { t:'浮生若梦', e:'Life Like a Dream' },
+    { t:'山河故人', e:'Mountains May Depart' },
+    { t:'未竟之旅', e:'An Unfinished Journey' },
+  ];
+  const q = pickFrom(quotes);
+  return { title: q.t, rationale:`化用古典诗词或文学语境，使片名携带厚重的文化纵深`, english: q.e, style:'引用化用' };
+}
+
+function genAllusion(fd, kws) {
+  const allusions = [
+    { t:'镜中', e:'In the Mirror', r:'取博尔赫斯「镜中」意象，反照自我与世界' },
+    { t:'局外人', e:'The Outsider', r:'化用加缪，以疏离视角呈现主体困境' },
+    { t:'存在与虚无', e:'Being and Nothingness', r:'借萨特命题，探问存在的本质张力' },
+    { t:'看不见的城市', e:'Invisible Cities', r:'化用卡尔维诺，城市作为记忆与欲望的投影' },
+    { t:'第二次诞生', e:'A Second Birth', r:'生命经历断裂后的自我重建' },
+    { t:'百年孤寂', e:'A Solitude of Years', r:'以时间与孤独的交织命名集体命运' },
+    { t:'阿玛柯德', e:'Amarcord', r:'取费里尼，意指「我记得」，以记忆为片名' },
+    { t:'等待戈多', e:'Waiting for Godot', r:'以荒诞等待隐喻虚无与希望的共存' },
+  ];
+  const a = pickFrom(allusions);
+  return { title: a.t, rationale: a.r, english: a.e, style:'典故化用' };
+}
+
+function genBilingual(fd, kws) {
+  const pairs = [
+    { zh:'失焦', en:'Out of Focus', r:'摄影语汇「失焦」暗示记忆与认知的模糊性' },
+    { zh:'Here / 此处', en:'Here', r:'中英并置「此处」，探问归属与当下的双重意义' },
+    { zh:'Still Life', en:'静物', r:'借用英文「静物」双义：静止的生命，永恒的存在' },
+    { zh:'消逝 / Fade', en:'Fade', r:'以渐隐的电影语汇命名，中英互为注脚' },
+    { zh:'In Between', en:'之间', r:'「之间」既是空间也是关系，悬置于两端' },
+    { zh:'余温 / Warmth', en:'Remaining Warmth', r:'余温是失去后的证明，也是继续的理由' },
+    { zh:'LOST', en:'失去', r:'英文大写「LOST」赋予现代感，失去即主题' },
+    { zh:'当下 / Now', en:'Now', r:'以「当下」作为对抗遗忘与焦虑的命题' },
+  ];
+  const p = pickFrom(pairs);
+  return { title: p.zh, rationale: p.r, english: p.en, style:'中英双语' };
+}
+
+function genColloquial(fd, kws) {
+  const synopsis = fd.synopsis;
+  const kw = kws[0] || '这件事';
+  const templates = [
+    { t:`关于${kw}的一切`, r:'口语直叙，「一切」包含了说不尽的复杂' },
+    { t:`${kw}不存在了`, r:'以陈述句命名，平静中暗含巨大的失落' },
+    { t:`我不知道怎么叫它`, r:'以困惑命名，把命名的无力感本身变成片名' },
+    { t:`也许没有人知道`, r:'悬置的疑问，邀请观者共同承担未知' },
+    { t:`后来的事情`, r:'口语时态「后来」，暗示叙事从中间开始' },
+    { t:`没关系的`, r:'自我安慰式的口吻，克制中透出深重的情绪' },
+    { t:`就这样吧`, r:'带有释然或无奈的日常语气，结局即开场' },
+    { t:`我们都不说话`, r:'以沉默本身命名，沉默是片子的主角' },
+    { t:`还有很多时间`, r:'对时间的自我欺骗，也是一种温柔的告别' },
+  ];
+  const item = pickFrom(templates);
+  return { title: item.t, rationale: item.r, english: bilingualEn(item.t), style:'口语直白' };
+}
+
+function genQuestion(fd, kws) {
+  const kw = kws[0] || '这里';
+  const templates = [
+    { t:`${kw}在哪里`, r:'以疑问命名，把寻找本身变成叙事核心' },
+    { t:`你还记得吗`, r:'直接追问观众，让记忆成为共谋' },
+    { t:`然后呢`, r:'以追问推动叙事，开放性强' },
+    { t:`这算什么`, r:'口语式困惑，以命名的失语作为片名' },
+    { t:`还有谁在`, r:'「在」即存在，疑问句承载失去与寻找' },
+    { t:`怎么办`, r:'以最普通的困境发问，指向普遍人性' },
+  ];
+  const item = pickFrom(templates);
+  return { title: item.t, rationale: item.r, english: bilingualEn(item.t), style:'疑问句式' };
+}
+
+function genParallel(fd, kws) {
+  const pairs = [
+    ['生',  '灭'],['来',  '去'],['在',  '离'],['明',  '暗'],
+    ['远',  '近'],['有',  '无'],['轻',  '重'],['聚',  '散'],
+  ];
+  const p = pickFrom(pairs);
+  const connectors = ['与','或','及'];
+  const conn = pickFrom(connectors);
+  const title = p[0] + conn + p[1];
+  return { title, rationale:`以「${p[0]}」与「${p[1]}」对仗，构建二元结构，蕴含辩证张力`, english: bilingualEn(title), style:'对仗结构' };
+}
+
+// Simple English approximation
+function bilingualEn(zh) {
+  const map = {
+    '归处':'Where We Return','余温':'Remaining Warmth','留白':'The Blank','凝视':'Gaze',
+    '缺席':'Absence','在场':'Presence','边界':'Borderline','重量':'Weight',
+    '沉默':'Silence','消失':'Disappearance','余光':'Last Light','碎片':'Fragments',
+    '光':'Light','时':'Time','海':'Sea','雪':'Snow','风':'Wind','雨':'Rain',
+    '生与灭':'Life and Death','来与去':'Coming and Going','在与离':'Here and Gone',
+    '明与暗':'Light and Shadow','生':'Birth','灭':'End','来':'Arrival','去':'Departure',
+  };
+  if (map[zh]) return map[zh];
+  // Compose fallback
+  return zh.split('').map(c => map[c] || '').filter(Boolean).join(' ') || 'Untitled';
+}
+
+// ── Main generator ────────────────────────────────────────────────────────────
+function generateTitles(fd, fresh = false) {
+  const kws = extractKeywords(fd);
+  const prefs = fd.prefs || [];
+
+  // Determine which template pool to use
+  let pool = [...STYLE_TEMPLATES];
+  if (prefs.length > 0) {
+    const prefPool = STYLE_TEMPLATES.filter(t => prefs.includes(t.style));
+    if (prefPool.length >= 4) pool = [...prefPool, ...STYLE_TEMPLATES];
+  }
+
+  // Shuffle pool
+  pool = pool.sort(() => Math.random() - 0.5);
+
+  const results = [];
+  const seen = new Set(fresh ? [] : [...usedTitles]);
+  let attempts = 0;
+
+  for (const tpl of pool) {
+    if (results.length >= 8) break;
+    if (attempts++ > 60) break;
+    try {
+      const item = tpl.fn(fd, kws);
+      if (!item || !item.title) continue;
+      if (seen.has(item.title)) continue;
+      seen.add(item.title);
+      usedTitles.add(item.title);
+      results.push(item);
+    } catch(e) { /* skip */ }
+  }
+
+  // Fill remaining with colloquial / imagery
+  while (results.length < 8) {
+    try {
+      const fns = [genColloquial, genImagery, genSpaceTime, genTwoChar];
+      const item = pickFrom(fns)(fd, kws);
+      if (!item || !item.title || seen.has(item.title)) continue;
+      seen.add(item.title);
+      results.push(item);
+    } catch(e) {
+      results.push({ title:'无题', rationale:'当语言失效，无题本身即意义', english:'Untitled', style:'极简' });
+    }
+  }
+
+  return results.slice(0, 8);
+}
+
+// ─── App Flow ─────────────────────────────────────────────────────────────────
+function generate() {
+  const prefs = Array.from(document.querySelectorAll('#pref-group .tag-option.selected')).map(t => t.dataset.val);
+  formData.prefs = prefs;
+  goTo('loading');
+  // Small delay for the loading animation
+  setTimeout(() => {
+    currentResults = generateTitles(formData);
+    renderResults(currentResults);
+    goTo('results');
+  }, 900);
+}
+
+function regenerateAll() {
+  goTo('loading');
+  setTimeout(() => {
+    currentResults = generateTitles(formData, true);
+    renderResults(currentResults);
+    goTo('results');
+  }, 700);
+}
+
+function regenerateOne(idx) {
+  const kws = extractKeywords(formData);
+  const pool = STYLE_TEMPLATES.sort(() => Math.random() - 0.5);
+  const existTitles = new Set(currentResults.map(r => r.title));
+  let newItem = null;
+  for (const tpl of pool) {
+    try {
+      const item = tpl.fn(formData, kws);
+      if (item && item.title && !existTitles.has(item.title)) { newItem = item; break; }
+    } catch(e) {}
+  }
+  if (!newItem) newItem = genImagery(formData, kws);
+  currentResults[idx] = newItem;
+  const card = document.querySelector(`.title-card[data-idx="${idx}"]`);
+  if (card) updateCard(card, newItem, idx);
+}
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+function renderResults(titles) {
+  const grid = document.getElementById('results-grid');
+  grid.innerHTML = '';
+  titles.forEach((item, i) => grid.appendChild(createCard(item, i)));
+}
+
+function createCard(item, idx) {
+  const div = document.createElement('div');
+  div.className = 'title-card';
+  div.dataset.idx = idx;
+  const isFav = favorites.some(f => f.title === item.title);
+  div.innerHTML = `
+    <div class="card-style-tag">${esc(item.style || '')}</div>
+    <div class="card-title-zh">${esc(item.title)}</div>
+    ${item.english ? `<div class="card-title-en">${esc(item.english)}</div>` : ''}
+    <div class="card-divider"></div>
+    <div class="card-rationale">${esc(item.rationale)}</div>
+    <div class="card-actions">
+      <button class="card-btn fav-btn${isFav ? ' favorited' : ''}" onclick="toggleFav(${idx}, this)">${isFav ? '★ 已收藏' : '☆ 收藏'}</button>
+      <button class="card-btn" onclick="regenerateOne(${idx})">换一个 ↻</button>
+    </div>`;
+  return div;
+}
+
+function updateCard(card, item, idx) {
+  const isFav = favorites.some(f => f.title === item.title);
+  card.querySelector('.card-style-tag').textContent = item.style || '';
+  card.querySelector('.card-title-zh').textContent = item.title;
+  const en = card.querySelector('.card-title-en');
+  if (en) en.textContent = item.english || '';
+  card.querySelector('.card-rationale').textContent = item.rationale;
+  const fb = card.querySelector('.fav-btn');
+  fb.className = `card-btn fav-btn${isFav ? ' favorited' : ''}`;
+  fb.textContent = isFav ? '★ 已收藏' : '☆ 收藏';
+}
+
+function toggleFav(idx, btn) {
+  const item = currentResults[idx];
+  const i = favorites.findIndex(f => f.title === item.title);
+  if (i >= 0) {
+    favorites.splice(i, 1);
+    btn.className = 'card-btn fav-btn';
+    btn.textContent = '☆ 收藏';
+    showToast('已取消收藏');
+  } else {
+    favorites.push(item);
+    btn.className = 'card-btn fav-btn favorited';
+    btn.textContent = '★ 已收藏';
+    showToast('已收藏');
+  }
+  localStorage.setItem('titlegen-favs', JSON.stringify(favorites));
+}
+
+function renderFavorites() {
+  const list = document.getElementById('fav-list');
+  if (!favorites.length) {
+    list.innerHTML = '<div class="fav-empty">暂无收藏<br><span style="font-size:12px;color:var(--text-dim)">在生成结果中点击「收藏」按钮</span></div>';
+    return;
+  }
+  list.innerHTML = '';
+  favorites.forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'fav-item';
+    div.innerHTML = `
+      <div class="fav-item-main">
+        <div class="fav-item-zh">${esc(item.title)}</div>
+        ${item.english ? `<div class="fav-item-en">${esc(item.english)}</div>` : ''}
+        <div class="fav-item-rationale">${esc(item.rationale)}</div>
+      </div>
+      <button class="fav-item-remove" onclick="removeFav(${i})" title="移除">✕</button>`;
+    list.appendChild(div);
+  });
+}
+
+function removeFav(idx) {
+  favorites.splice(idx, 1);
+  localStorage.setItem('titlegen-favs', JSON.stringify(favorites));
+  renderFavorites();
+  syncFavBtns();
+}
+
+function syncFavBtns() {
+  document.querySelectorAll('.fav-btn').forEach((btn, i) => {
+    const item = currentResults[i];
+    if (!item) return;
+    const isFav = favorites.some(f => f.title === item.title);
+    btn.className = `card-btn fav-btn${isFav ? ' favorited' : ''}`;
+    btn.textContent = isFav ? '★ 已收藏' : '☆ 收藏';
+  });
+}
+
+function copyAllFavs() {
+  if (!favorites.length) { showToast('暂无收藏内容'); return; }
+  const text = favorites.map(f => {
+    let s = f.title;
+    if (f.english) s += `  /  ${f.english}`;
+    return s + '\n' + f.rationale;
+  }).join('\n\n');
+  navigator.clipboard.writeText(text).then(() => showToast('已复制到剪贴板'));
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function esc(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>
